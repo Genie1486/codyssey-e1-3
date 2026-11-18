@@ -8,8 +8,8 @@ DEFAULT_USER_SIZE: int = 3  # 모드 1 기본 행렬 크기
 class Mode(Enum):
     """프로그램 실행 모드"""
 
-    USER_INPUT = "사용자 입력 (3x3)"
-    JSON_ANALYSIS = "data.json 분석"
+    USER_INPUT = (1, "사용자 입력 (3x3)")
+    JSON_ANALYSIS = (2, "data.json 분석")
 
 
 class MatrixType(Enum):
@@ -27,3 +27,10 @@ class JudgeResult(Enum):
     FILTER_B = "B"  # 두 번째 필터(B 또는 X) 우세
     UNDECIDED = "판정 불가 (|A-B| < 1e-9)"  # 허용오차 이내 동점
     SIZE_MISMATCH = "MISMATCH"  # 행렬 크기 불일치 오류
+
+
+class SectionHeader(Enum):
+    FILTER_INPUT = "# [1] 필터 입력"
+    PATTERN_INPUT = "# [2] 패턴 입력"
+    MAC_RESULT = "# [3] MAC 결과"
+    MAC_RESULT_UNDECIDED = "# [3] MAC 결과 (판정 불가)"

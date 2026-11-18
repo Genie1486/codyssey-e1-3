@@ -1,4 +1,4 @@
-﻿from constants.constants import REPEAT_COUNT, JudgeResult, Mode
+﻿from constants.constants import REPEAT_COUNT, JudgeResult, Mode, SectionHeader
 from models.mac_result import MacResult
 
 
@@ -10,7 +10,7 @@ class OutputView:
     HEADER_MODE_SELECT: str = "[모드 선택]"
 
     MSG_MODE_ITEM: str = "{idx}. {mode_name}"
-    MSG_FILTER_SAVED: str = "{filter_name} 저장 완료"
+    MSG_FILTER_SAVED: str = "✅ {filter_name} 저장 완료"
     MSG_SCORE_A: str = "A 점수: {score}"
     MSG_SCORE_B: str = "B 점수: {score}"
     MSG_AVG_TIME: str = "연산 시간(평균/{repeat}회): {time:.3f} ms"
@@ -25,13 +25,14 @@ class OutputView:
         print()
         print(self.HEADER_MODE_SELECT)
         print()
-        for i, mode in enumerate(Mode, start=1):
-            print(self.MSG_MODE_ITEM.format(idx=i, mode_name=mode.value))
+        for mode in Mode:
+            print(self.MSG_MODE_ITEM.format(idx=mode.value[0], mode_name=mode.value[1]))
 
-    def display_header(self, title: str) -> None:
+    def display_header(self, title: SectionHeader) -> None:
         """구분선과 함께 섹션 헤더(예: [1] 필터 입력)를 출력한다."""
+        print()
         print(self.DIVIDER)
-        print(title)
+        print(title.value)
         print(self.DIVIDER)
 
     def display_filter_saved(self, filter_name: str) -> None:
@@ -42,6 +43,11 @@ class OutputView:
 
     def display_mac_result(self, result: MacResult) -> None:
         """MacResult 객체를 받아 MAC 점수, 평균 연산 시간(ms), 최종 판정 결과를 출력한다."""
+
+        if result.judge_result == JudgeResult.UNDECIDED:
+            self.display_header(SectionHeader.MAC_RESULT_UNDECIDED)
+        else:
+            self.display_header(SectionHeader.MAC_RESULT)
         if (
             result.score_a is not None
             and result.score_b is not None
