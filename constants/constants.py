@@ -53,6 +53,17 @@ class TestStatus(Enum):
     FAIL = "FAIL"
 
 
+class ErrorType(Enum):
+    """모드 2 테스트 케이스 검증 실패 유형"""
+
+    SCHEMA_ERROR = "스키마/형식 오류"
+    FILTER_NOT_FOUND = "매칭 필터 없음"
+    SIZE_MISMATCH = "행렬 크기 불일치"
+    INVALID_LABEL = "유효하지 않은 라벨"
+    UNDECIDED = "판정 불가 (동점)"
+    PREDICTION_MISMATCH = "예측 불일치"
+
+
 class SectionHeader(Enum):
     """콘솔 출력 섹션 헤더"""
 
