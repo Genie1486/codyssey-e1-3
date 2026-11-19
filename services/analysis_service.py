@@ -84,6 +84,10 @@ class AnalysisService:
 
             filters[size] = Filter(size=size, filter_a=cross_matrix, filter_b=x_matrix)
 
+        # JSON에 3×3 필터가 없으면 기본 필터 추가
+        if 3 not in filters:
+            filters[3] = Filter.create_default_filters(3)
+
         return filters
 
     def load_patterns(self) -> List[Pattern]:
@@ -94,6 +98,7 @@ class AnalysisService:
             raise ValueError(ErrorType.SCHEMA_ERROR.value)
 
         patterns: List[Pattern] = []
+
         for case_name, case_data in raw_patterns.items():
             if not isinstance(case_data, dict):
                 raise ValueError(f"{case_name}: {ErrorType.SCHEMA_ERROR.value}")
@@ -114,7 +119,40 @@ class AnalysisService:
                 )
             )
 
+        if not any(p.size == 3 for p in patterns):
+            patterns.extend(self._create_default_patterns())
+
+        patterns.sort(key=lambda p: (p.size, p.name))
+
         return patterns
+
+    @staticmethod
+    def _create_default_patterns() -> List[Pattern]:
+        """JSON에 3×3 케이스가 없을 때 사용할 기본 검증 패턴 목록을 생성한다."""
+        return [
+            # 1) 십자(+) 입력에 정답을 X로 설정 -> 예측 불일치(PREDICTION_MISMATCH) 검증용
+            Pattern(
+                name="size_3_1",
+                size=3,
+                input_matrix=[
+                    [0.0, 1.0, 0.0],
+                    [1.0, 1.0, 1.0],
+                    [0.0, 1.0, 0.0],
+                ],
+                expected=PatternLabel.X,
+            ),
+            # 2) 네모(□) 입력 -> Cross(4.0) vs X(4.0) 동점(UNDECIDED) 검증용
+            Pattern(
+                name="size_3_2",
+                size=3,
+                input_matrix=[
+                    [1.0, 1.0, 1.0],
+                    [1.0, 0.0, 1.0],
+                    [1.0, 1.0, 1.0],
+                ],
+                expected=PatternLabel.CROSS,
+            ),
+        ]
 
     def analyze_patterns(
         self, patterns: List[Pattern], filters: Dict[int, Filter]
@@ -187,16 +225,6 @@ class AnalysisService:
                 time_sums.get(size, 0.0) + case_result.mac_result.avg_time_ms
             )
             counts[size] = counts.get(size, 0) + 1
-
-        # 3×3처럼 JSON 패턴에 없던 기본 측정 대상 크기 보완 (필요 시)
-        if 3 not in time_sums:
-            default_filter = Filter.create_default_filters(3)
-            dummy_input = [[1.0] * 3 for _ in range(3)]
-            mac_res = self._calculator.calculate_result(
-                default_filter.filter_a, default_filter.filter_b, dummy_input
-            )
-            time_sums[3] = mac_res.avg_time_ms
-            counts[3] = 1
 
         results = [
             PerformanceResult(
