@@ -1,20 +1,51 @@
-﻿from constants.constants import REPEAT_COUNT, JudgeResult, Mode, SectionHeader
+﻿from typing import Dict, List
+
+from constants.constants import (
+    REPEAT_COUNT,
+    JudgeResult,
+    Mode,
+    PatternLabel,
+    SectionHeader,
+    TestStatus,
+)
+from models.case_result import CaseResult
+from models.filter import Filter
 from models.mac_result import MacResult
+from models.performance_result import PerformanceResult
+from models.summary_result import SummaryResult
 
 
 class OutputView:
     """콘솔 화면 출력을 담당하는 뷰 클래스"""
 
-    DIVIDER: str = "#----------------------------------------"
+    DIVIDER: str = "#" + "-" * 40
+    SUB_DIVIDER: str = "-" * 41
     TITLE_SIMULATOR: str = "=== Mini NPU Simulator ==="
     HEADER_MODE_SELECT: str = "[모드 선택]"
 
+    # 모드 1 메시지 포맷
     MSG_MODE_ITEM: str = "{idx}. {mode_name}"
     MSG_FILTER_SAVED: str = "✅ {filter_name} 저장 완료"
     MSG_SCORE_A: str = "A 점수: {score}"
     MSG_SCORE_B: str = "B 점수: {score}"
     MSG_AVG_TIME: str = "연산 시간(평균/{repeat}회): {time:.3f} ms"
     MSG_JUDGE_RESULT: str = "판정: {result}"
+
+    # 모드 2 메시지 포맷
+    MSG_FILTER_LOADED: str = "✓ size_{size} 필터 로드 완료 ({cross}, {x})"
+    MSG_CASE_HEADER: str = "- -- {case_name} ---"
+    MSG_PATTERN_SCORE: str = "{label} 점수: {score}"
+    MSG_CASE_RESULT: str = "판정: {predicted} | expected: {expected} | {status}{reason}"
+    MSG_PERF_HEADER: str = f"{'크기':<8}{'평균 시간(ms)':>11}{'연산 횟수':>8}"
+    MSG_PERF_ROW: str = "{size:<10}{avg_time:>15.3f}{op_count:>12}"
+    MSG_SUMMARY_TOTAL: str = "총 테스트: {count}개"
+    MSG_SUMMARY_PASS: str = "통과: {count}개"
+    MSG_SUMMARY_FAIL: str = "실패: {count}개"
+    MSG_SUMMARY_FAIL_ITEM: str = "- {case_name}: {reason} 처리 규칙에 따라 {status}"
+    MSG_ERROR: str = "\n[오류] {message}"
+
+    LABEL_NONE: str = "없음"
+    REASON_UNKNOWN: str = "알 수 없는 오류"
 
     def display_title(self) -> None:
         """시뮬레이터 시작 타이틀을 출력한다."""
@@ -35,6 +66,10 @@ class OutputView:
         print(title.value)
         print(self.DIVIDER)
 
+    def display_error(self, message: str) -> None:
+        """오류 메시지를 출력한다."""
+        print(self.MSG_ERROR.format(message=message))
+
     def display_filter_saved(self, filter_name: str) -> None:
         """필터 저장 완료 확인 메시지를 출력한다."""
         print()
@@ -43,11 +78,11 @@ class OutputView:
 
     def display_mac_result(self, result: MacResult) -> None:
         """MacResult 객체를 받아 MAC 점수, 평균 연산 시간(ms), 최종 판정 결과를 출력한다."""
-
         if result.judge_result == JudgeResult.UNDECIDED:
             self.display_header(SectionHeader.MAC_RESULT_UNDECIDED)
         else:
             self.display_header(SectionHeader.MAC_RESULT)
+
         if (
             result.score_a is not None
             and result.score_b is not None
@@ -69,7 +104,110 @@ class OutputView:
         if result.judge_result is not None:
             print(self.MSG_JUDGE_RESULT.format(result=result.judge_result.value))
 
-    def display_performance_table(self, results: list) -> None:
-        """크기별(N×N) 평균 연산 시간(ms)과 연산 횟수(N²) 성능 분석 표를 출력한다."""
-        # 모드 2 구현 시 작성
-        pass
+    def display_loaded_filters(self, filters: Dict[int, Filter]) -> None:
+        """[1] 필터 로드 섹션을 출력한다."""
+        self.display_header(SectionHeader.JSON_FILTER_LOAD)
+
+        for size in sorted(filters.keys()):
+            print(
+                self.MSG_FILTER_LOADED.format(
+                    size=size,
+                    cross=PatternLabel.CROSS.value,
+                    x=PatternLabel.X.value,
+                )
+            )
+
+    def display_pattern_analysis(self, case_results: List[CaseResult]) -> None:
+        """[2] 패턴 분석 섹션을 출력한다."""
+        self.display_header(SectionHeader.JSON_PATTERN_ANALYSIS)
+        for case_result in case_results:
+            self._display_single_case_result(case_result)
+
+    def _display_single_case_result(self, case_result: CaseResult) -> None:
+        """개별 패턴 케이스의 분석 및 판정 결과를 출력한다."""
+        print(self.MSG_CASE_HEADER.format(case_name=case_result.case_name))
+
+        expected_str = (
+            case_result.expected_label.value
+            if case_result.expected_label is not None
+            else self.LABEL_NONE
+        )
+        reason_suffix = (
+            f" ({case_result.fail_reason})"
+            if case_result.status == TestStatus.FAIL and case_result.fail_reason
+            else ""
+        )
+
+        if case_result.mac_result is None:
+            print(
+                self.MSG_CASE_RESULT.format(
+                    predicted=self.LABEL_NONE,
+                    expected=expected_str,
+                    status=case_result.status.value,
+                    reason=reason_suffix,
+                )
+            )
+            return
+
+        precision = (
+            16 if case_result.mac_result.judge_result == JudgeResult.UNDECIDED else 1
+        )
+        print(
+            self.MSG_PATTERN_SCORE.format(
+                label=PatternLabel.CROSS.value,
+                score=f"{case_result.mac_result.score_a:.{precision}f}",
+            )
+        )
+        print(
+            self.MSG_PATTERN_SCORE.format(
+                label=PatternLabel.X.value,
+                score=f"{case_result.mac_result.score_b:.{precision}f}",
+            )
+        )
+        print(
+            self.MSG_CASE_RESULT.format(
+                predicted=case_result.predicted_label,
+                expected=expected_str,
+                status=case_result.status.value,
+                reason=reason_suffix,
+            )
+        )
+
+    def display_performance_analysis(
+        self, perf_results: List[PerformanceResult]
+    ) -> None:
+        """[3] 성능 분석 섹션을 출력한다."""
+        self.display_header(SectionHeader.JSON_PERFORMANCE_ANALYSIS)
+
+        print(self.MSG_PERF_HEADER)
+        print(self.SUB_DIVIDER)
+
+        for perf_result in perf_results:
+            size_str = f"{perf_result.size}×{perf_result.size}"
+            print(
+                self.MSG_PERF_ROW.format(
+                    size=size_str,
+                    avg_time=perf_result.avg_time_ms,
+                    op_count=perf_result.operation_count,
+                )
+            )
+
+    def display_summary(self, summary: SummaryResult) -> None:
+        """[4] 결과 요약 섹션을 출력한다."""
+        self.display_header(SectionHeader.JSON_RESULT_SUMMARY)
+
+        print(self.MSG_SUMMARY_TOTAL.format(count=summary.total_count))
+        print(self.MSG_SUMMARY_PASS.format(count=summary.pass_count))
+        print(self.MSG_SUMMARY_FAIL.format(count=summary.fail_count))
+
+        if summary.fail_cases:
+            print()
+            for case_result in summary.fail_cases:
+                reason = case_result.fail_reason or self.REASON_UNKNOWN
+                print(
+                    self.MSG_SUMMARY_FAIL_ITEM.format(
+                        case_name=case_result.case_name,
+                        reason=reason,
+                        status=case_result.status.value,
+                    )
+                )
