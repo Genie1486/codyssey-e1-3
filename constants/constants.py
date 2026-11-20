@@ -6,6 +6,9 @@ REPEAT_COUNT: int = 10  # 성능 측정 반복 횟수
 DEFAULT_USER_SIZE: int = 3  # 모드 1 기본 행렬 크기
 DEFAULT_DATA_PATH: str = "data.json"  # 모드 2 기본 데이터 파일 경로
 
+MIN_CELL_VALUE: float = 0.0
+MAX_CELL_VALUE: float = 1.0
+
 
 class Mode(Enum):
     """프로그램 실행 모드"""
@@ -59,6 +62,7 @@ class ErrorType(Enum):
     SCHEMA_ERROR = "스키마/형식 오류"
     FILTER_NOT_FOUND = "매칭 필터 없음"
     SIZE_MISMATCH = "행렬 크기 불일치"
+    INVALID_VALUE = "비정상 수치 원소 포함"
     INVALID_LABEL = "유효하지 않은 라벨"
     UNDECIDED = "판정 불가 (동점)"
     PREDICTION_MISMATCH = "예측 불일치"

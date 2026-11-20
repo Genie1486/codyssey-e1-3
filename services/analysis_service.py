@@ -1,7 +1,10 @@
+import math
 from typing import Any, Dict, List, Optional
 
 from constants.constants import (
     LABEL_ALIAS_MAP,
+    MAX_CELL_VALUE,
+    MIN_CELL_VALUE,
     ErrorType,
     JudgeResult,
     PatternLabel,
@@ -60,6 +63,19 @@ class AnalysisService:
             return False
         return all(isinstance(row, list) and len(row) == cols for row in matrix)
 
+    @staticmethod
+    def _validate_matrix_values(matrix: List[List[Any]]) -> bool:
+        """행렬의 모든 원소가 유한 실수이며 허용 범위([MIN_CELL_VALUE, MAX_CELL_VALUE]) 내인지 검증한다."""
+        for row in matrix:
+            for val in row:
+                if isinstance(val, bool) or not isinstance(val, (int, float)):
+                    return False
+                if not math.isfinite(val):
+                    return False
+                if not (MIN_CELL_VALUE <= val <= MAX_CELL_VALUE):
+                    return False
+        return True
+
     def load_filters(self) -> Dict[int, Filter]:
         """JSON의 filters 항목을 파싱 및 검증하여 {크기: Filter} 딕셔너리로 반환한다."""
         raw_data = self._get_raw_data()
@@ -105,10 +121,8 @@ class AnalysisService:
 
             size = self._extract_size_from_key(case_name)
             input_matrix = case_data.get("input")
-            expected_label = self._normalize_label(case_data.get("expected"))
-
-            if expected_label is None:
-                raise ValueError(f"{case_name}: {ErrorType.INVALID_LABEL.value}")
+            raw_expected = case_data.get("expected")
+            expected_label = self._normalize_label(raw_expected)
 
             patterns.append(
                 Pattern(
@@ -116,6 +130,7 @@ class AnalysisService:
                     size=size,
                     input_matrix=input_matrix,
                     expected=expected_label,
+                    raw_expected=raw_expected,
                 )
             )
 
@@ -163,7 +178,10 @@ class AnalysisService:
     def _analyze_single_pattern(
         self, pattern: Pattern, filters: Dict[int, Filter]
     ) -> CaseResult:
-        """단일 패턴 케이스의 크기 검증, MAC 연산 및 PASS/FAIL 판정을 수행한다."""
+        """단일 패턴 케이스의 무결성 검증, MAC 연산 및 PASS/FAIL 판정을 수행한다."""
+        if pattern.expected is None:
+            return CaseResult.fail(pattern, ErrorType.INVALID_LABEL)
+
         target_filter = filters.get(pattern.size)
         if target_filter is None:
             return CaseResult.fail(pattern, ErrorType.FILTER_NOT_FOUND)
@@ -172,6 +190,9 @@ class AnalysisService:
             pattern.size, pattern.size, pattern.input_matrix
         ):
             return CaseResult.fail(pattern, ErrorType.SIZE_MISMATCH)
+
+        if not self._validate_matrix_values(pattern.input_matrix):
+            return CaseResult.fail(pattern, ErrorType.INVALID_VALUE)
 
         mac_result = self._calculator.calculate_result(
             target_filter.filter_a, target_filter.filter_b, pattern.input_matrix

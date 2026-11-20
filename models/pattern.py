@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any, List, Optional
 from constants.constants import PatternLabel, TestStatus
 from models.mac_result import MacResult
 
@@ -17,3 +17,4 @@ class Pattern:
     size: int
     input_matrix: List[List[float]]
     expected: PatternLabel
+    raw_expected: Optional[Any] = None
