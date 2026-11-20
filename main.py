@@ -19,6 +19,7 @@ def main() -> None:
         input_view=input_view,
         output_view=output_view,
         calculator_service=calculator_service,
+        json_repository=json_repository,
         analysis_service=analysis_service,
     )
     simulator_controller.run()

@@ -3,14 +3,21 @@ from typing import List
 
 from constants.constants import (
     DEFAULT_USER_SIZE,
+    FAILED_CASES_PATH,
+    NORMAL_PATTERN_RATIO,
+    PASSED_CASES_PATH,
     MatrixType,
     Mode,
     SectionHeader,
+    TestStatus,
 )
+from models.filter import Filter
+from repositories.json_repository import JsonRepository
 from services.analysis_service import AnalysisService
+from services.calculator_service import CalculatorService
+from services.pattern_generator import PatternGenerator
 from views.input_view import InputView
 from views.output_view import OutputView
-from services.calculator_service import CalculatorService
 
 
 class SimulatorController:
@@ -34,12 +41,16 @@ class SimulatorController:
         input_view: InputView,
         output_view: OutputView,
         calculator_service: CalculatorService,
+        json_repository: JsonRepository,
         analysis_service: AnalysisService,
+        pattern_generator: PatternGenerator | None = None,
     ) -> None:
         self._input_view = input_view
         self._output_view = output_view
         self._calculator_service = calculator_service
+        self._json_repository = json_repository
         self._analysis_service = analysis_service
+        self._pattern_generator = pattern_generator or PatternGenerator()
 
     def run(self) -> None:
         """타이틀 및 메뉴를 출력하고 사용자 선택에 따라 해당 모드를 실행한다."""
@@ -47,15 +58,21 @@ class SimulatorController:
 
         while True:
             self._output_view.display_mode_choice()
-            choice = self._input_view.get_mode_choice()
+            mode = self._input_view.get_mode_choice()
 
-            self._handle_mode(choice)
+            if mode == Mode.EXIT.value[0]:
+                self._output_view.display_exit()
+                break
 
-    def _handle_mode(self, choice: int) -> None:
-        if choice == Mode.USER_INPUT.value[0]:
+            self._handle_mode(mode)
+
+    def _handle_mode(self, mode: int) -> None:
+        if mode == Mode.USER_INPUT.value[0]:
             self._run_user_input_mode()
-        elif choice == Mode.JSON_ANALYSIS.value[0]:
+        elif mode == Mode.JSON_ANALYSIS.value[0]:
             self._run_json_analysis_mode()
+        elif mode == Mode.PATTERN_GENERATION.value[0]:
+            self._run_pattern_generation_mode()
 
     def _run_user_input_mode(self) -> None:
         """모드 1(사용자 3×3 직접 입력)의 전체 실행 흐름을 조립하고 제어한다."""
@@ -106,3 +123,63 @@ class SimulatorController:
             self._output_view.display_error(self.ERR_INVALID_DATA.format(detail=e))
         except (OSError, UnicodeDecodeError) as e:
             self._output_view.display_error(self.ERR_FILE_IO.format(detail=e))
+
+    def _run_pattern_generation_mode(self) -> None:
+        """[모드 3] 재현성 SEED 기반 패턴 생성 및 무결성·성능 검증, 결과 JSON 저장을 실행한다."""
+        size, count = self._input_view.get_pattern_generation_params()
+
+        normal_count = round(count * NORMAL_PATTERN_RATIO)
+        anomaly_count = count - normal_count
+        self._output_view.display_pattern_generation_info(
+            size=size,
+            count=count,
+            seed=self._pattern_generator.seed,
+            normal_count=normal_count,
+            anomaly_count=anomaly_count,
+        )
+
+        default_filter = Filter.create_default_filters(size)
+        filters = {size: default_filter}
+        patterns = self._pattern_generator.generate_patterns(size=size, count=count)
+
+        case_results = self._analysis_service.analyze_patterns(patterns, filters)
+        self._output_view.display_pattern_analysis(case_results)
+
+        perf_results = self._analysis_service.measure_performance(case_results)
+        self._output_view.display_performance_analysis(perf_results)
+
+        summary = self._analysis_service.summarize_result(case_results)
+        self._output_view.display_summary(summary)
+
+        passed_results = [r for r in case_results if r.status == TestStatus.PASS]
+        failed_results = [r for r in case_results if r.status == TestStatus.FAIL]
+
+        passed_path = (
+            self._json_repository.save_cases(
+                filename=PASSED_CASES_PATH,
+                patterns=patterns,
+                case_results=passed_results,
+                seed=self._pattern_generator.seed,
+                size=size,
+            )
+            if passed_results
+            else None
+        )
+        failed_path = (
+            self._json_repository.save_cases(
+                filename=FAILED_CASES_PATH,
+                patterns=patterns,
+                case_results=failed_results,
+                seed=self._pattern_generator.seed,
+                size=size,
+            )
+            if failed_results
+            else None
+        )
+
+        self._output_view.display_export_summary(
+            passed_count=len(passed_results),
+            passed_path=passed_path,
+            failed_count=len(failed_results),
+            failed_path=failed_path,
+        )

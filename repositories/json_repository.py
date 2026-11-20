@@ -1,6 +1,7 @@
 import json
 import math
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional, Union
 
 from constants.constants import DEFAULT_DATA_PATH, ErrorType
@@ -75,8 +76,12 @@ class JsonRepository:
         }
 
         output_path = self._base_dir / filename
+
+        raw_json = json.dumps(payload, indent=4, ensure_ascii=False)
+        formatted_json = self._compact_matrix_rows(raw_json)
+
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2, ensure_ascii=False)
+            f.write(formatted_json)
 
         return output_path
 
@@ -92,3 +97,14 @@ class JsonRepository:
         if isinstance(val, float) and not math.isfinite(val):
             return str(val)
         return val
+
+    @staticmethod
+    def _compact_matrix_rows(json_text: str) -> str:
+        """2차원 행렬의 각 행(1차원 원소 배열)을 data.json 스타일처럼 한 줄로 정렬한다."""
+        row_pattern = re.compile(r"\[\s*\n\s*([^\[\]\{\}]+?)\s*\n\s*\]")
+
+        def _collapse_row(match: re.Match[str]) -> str:
+            elements = [item.strip() for item in match.group(1).split(",")]
+            return f"[{', '.join(elements)}]"
+
+        return row_pattern.sub(_collapse_row, json_text)

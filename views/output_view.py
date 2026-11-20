@@ -1,4 +1,5 @@
-﻿from typing import Dict, List
+﻿from pathlib import Path
+from typing import Dict, List, Optional
 
 from constants.constants import (
     REPEAT_COUNT,
@@ -74,6 +75,17 @@ class OutputView:
 
     LABEL_NONE: str = "없음"
     REASON_UNKNOWN: str = "알 수 없는 오류"
+
+    MSG_GEN_CONFIG: str = (
+        "크기: {size}×{size} | 총 {count}개 패턴 생성 (SEED={seed}, 정상 {normal}개 / 비정상 {anomaly}개)"
+    )
+    MSG_SAVED_PASSED: str = "[PASS] 예측 성공 케이스 저장 완료 ({count}건): {path}"
+    MSG_SAVED_FAILED: str = "[FAIL] 검증 실패 케이스 저장 완료 ({count}건): {path}"
+    MSG_NO_FAILED_CASES: str = (
+        "[FAIL] 검증 실패 케이스가 없어 실패 파일을 생성하지 않았습니다."
+    )
+
+    MSG_EXIT: str = "프로그램을 종료합니다."
 
     def display_title(self) -> None:
         """시뮬레이터 시작 타이틀을 출력한다."""
@@ -248,3 +260,38 @@ class OutputView:
                         status=case_result.status.value,
                     )
                 )
+
+    def display_pattern_generation_info(
+        self, size: int, count: int, seed: int, normal_count: int, anomaly_count: int
+    ) -> None:
+        """모드 3 패턴 생성 설정 요약을 출력한다."""
+        self.display_header(SectionHeader.GEN_PATTERN_CONFIG)
+        print(
+            self.MSG_GEN_CONFIG.format(
+                size=size,
+                count=count,
+                seed=seed,
+                normal=normal_count,
+                anomaly=anomaly_count,
+            )
+        )
+
+    def display_export_summary(
+        self,
+        passed_count: int,
+        passed_path: Optional[Path],
+        failed_count: int,
+        failed_path: Optional[Path],
+    ) -> None:
+        """모드 3 PASS/FAIL JSON 파일 저장 결과를 출력한다."""
+        self.display_header(SectionHeader.GEN_FILE_EXPORT)
+        if passed_path is not None:
+            print(self.MSG_SAVED_PASSED.format(count=passed_count, path=passed_path))
+        if failed_path is not None:
+            print(self.MSG_SAVED_FAILED.format(count=failed_count, path=failed_path))
+        elif failed_count == 0:
+            print(self.MSG_NO_FAILED_CASES)
+
+    def display_exit(self) -> None:
+        """프로그램 종료 안내 메시지를 출력한다."""
+        print(self.MSG_EXIT)

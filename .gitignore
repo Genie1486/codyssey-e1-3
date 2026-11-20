@@ -1,1 +1,4 @@
 __pycache__/
+
+passed_cases.json
+failed_cases.json
