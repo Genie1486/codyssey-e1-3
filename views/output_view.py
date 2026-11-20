@@ -18,8 +18,11 @@ from models.summary_result import SummaryResult
 class OutputView:
     """콘솔 화면 출력을 담당하는 뷰 클래스"""
 
-    DIVIDER: str = "#" + "-" * 59
-    SUB_DIVIDER: str = "-" * 60
+    DIVIDER_WIDTH: int = 65
+    TOTAL_WIDTH: int = DIVIDER_WIDTH + 1
+    DIVIDER: str = "#" + "-" * DIVIDER_WIDTH
+    SUB_DIVIDER: str = "-" * TOTAL_WIDTH
+
     TITLE_SIMULATOR: str = "=== Mini NPU Simulator ==="
     HEADER_MODE_SELECT: str = "[모드 선택]"
 
@@ -39,12 +42,30 @@ class OutputView:
     MSG_CASE_HEADER: str = "- -- {case_name} ---"
     MSG_PATTERN_SCORE: str = "{label} 점수: {score}"
     MSG_CASE_RESULT: str = "판정: {predicted} | expected: {expected} | {status}{reason}"
+
+    # 전체 폭(TOTAL_WIDTH)을 5개 열 비율로 자동 배분
+    COL_1_W: int = max(8, int(TOTAL_WIDTH * 0.12))  # 크기
+    COL_2_W: int = max(14, int(TOTAL_WIDTH * 0.23))  # 기존 2D(ms)
+    COL_3_W: int = max(16, int(TOTAL_WIDTH * 0.26))  # 최적화 1D(ms)
+    COL_4_W: int = max(12, int(TOTAL_WIDTH * 0.20))  # 개선율(%)
+    COL_5_W: int = TOTAL_WIDTH - (COL_1_W + COL_2_W + COL_3_W + COL_4_W)  # 연산 횟수
+
+    # 전각 한글 글자 수만큼 포맷 폭 보정 (크기:2자, 기존:2자, 최적화:3자, 개선율:3자, 연산횟수:4자)
     MSG_PERF_HEADER: str = (
-        f"{'크기':<6}{'기존 2D(ms)':>11}{'최적화 1D(ms)':>13}{'개선율(%)':>10}{'연산 횟수':>9}"
+        f"{'크기':<{COL_1_W - 2}}"
+        f"{'기존 2D(ms)':>{COL_2_W - 2}}"
+        f"{'최적화 1D(ms)':>{COL_3_W - 3}}"
+        f"{'개선율(%)':>{COL_4_W - 3}}"
+        f"{'연산 횟수':>{COL_5_W - 4}}"
     )
     MSG_PERF_ROW: str = (
-        "{size:<8}{avg_time:>14.3f}{opt_time:>16.3f}{rate:>12.1f}%{op_count:>12}"
+        f"{{size:<{COL_1_W}}}"
+        f"{{avg_time:>{COL_2_W}.3f}}"
+        f"{{opt_time:>{COL_3_W}.3f}}"
+        f"{{rate:>{COL_4_W - 1}.1f}}%"
+        f"{{op_count:>{COL_5_W}}}"
     )
+
     MSG_SUMMARY_TOTAL: str = "총 테스트: {count}개"
     MSG_SUMMARY_PASS: str = "통과: {count}개"
     MSG_SUMMARY_FAIL: str = "실패: {count}개"
