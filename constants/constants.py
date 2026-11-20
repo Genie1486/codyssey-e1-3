@@ -66,15 +66,15 @@ class TestStatus(Enum):
 
 
 class ErrorType(Enum):
-    """모드 2 테스트 케이스 검증 실패 유형"""
+    """모드 2·3 테스트 케이스 검증 실패 유형 (3대 진단 카테고리 분류 포함)"""
 
-    SCHEMA_ERROR = "스키마/형식 오류"
-    FILTER_NOT_FOUND = "매칭 필터 없음"
-    SIZE_MISMATCH = "행렬 크기 불일치"
-    INVALID_VALUE = "비정상 수치 원소 포함"
-    INVALID_LABEL = "유효하지 않은 라벨"
-    UNDECIDED = "판정 불가 (동점)"
-    PREDICTION_MISMATCH = "예측 불일치"
+    SCHEMA_ERROR = "[데이터/스키마 문제] 스키마/형식 오류"
+    FILTER_NOT_FOUND = "[데이터/스키마 문제] 매칭 필터 없음"
+    SIZE_MISMATCH = "[데이터/스키마 문제] 행렬 크기 불일치"
+    INVALID_VALUE = "[데이터/스키마 문제] 비정상 수치 원소 포함"
+    INVALID_LABEL = "[데이터/스키마 문제] 유효하지 않은 라벨"
+    UNDECIDED = "[수치 비교 문제] 판정 불가 (동점)"
+    PREDICTION_MISMATCH = "[로직 문제] 예측 불일치"
 
 
 class SectionHeader(Enum):

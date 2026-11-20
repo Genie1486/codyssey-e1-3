@@ -16,5 +16,5 @@ class Pattern:
     name: str
     size: int
     input_matrix: List[List[float]]
-    expected: PatternLabel
+    expected: Optional[PatternLabel]
     raw_expected: Optional[Any] = None

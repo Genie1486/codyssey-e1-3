@@ -175,7 +175,7 @@ class OutputView:
         print(self.MSG_CASE_HEADER.format(case_name=case_result.case_name))
 
         expected_str = (
-            case_result.expected_label.value
+            case_result.expected_label
             if case_result.expected_label is not None
             else self.LABEL_NONE
         )

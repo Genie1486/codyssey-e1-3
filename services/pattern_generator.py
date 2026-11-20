@@ -1,6 +1,6 @@
 import random
 from enum import Enum
-from typing import Any, List
+from typing import Any, List, Optional
 
 from constants.constants import (
     MAX_CELL_VALUE,
@@ -78,66 +78,56 @@ class PatternGenerator:
     def _create_anomaly_pattern(
         self, rng: random.Random, case_name: str, size: int
     ) -> Pattern:
-        """5종의 비정상 결함 중 하나를 무작위로 주입한 패턴을 생성한다."""
-        anomaly = rng.choice(list(AnomalyType))
-        label = rng.choice([PatternLabel.CROSS, PatternLabel.X])
-        matrix = self._build_signal_matrix(rng, size, label)
+        """검증 격리 테스트를 위한 비정상 패턴 1건을 무작위 유형으로 생성한다."""
+        anomaly_type = rng.choice(
+            [
+                "size_mismatch_row",
+                "size_mismatch_col",
+                "invalid_label",
+                "out_of_range_value",
+                "non_finite_value",
+                "label_mismatch",
+                "tie_score",
+            ]
+        )
 
-        if anomaly == AnomalyType.ROW_MISMATCH:
-            # 행 개수 축소 (N-1행, N=1일 경우 빈 행렬)
-            broken_matrix = matrix[:-1] if size > 1 else []
-            return Pattern(
-                name=case_name,
-                size=size,
-                input_matrix=broken_matrix,
-                expected=label,
-                raw_expected=label.value,
-            )
+        true_label = rng.choice([PatternLabel.CROSS, PatternLabel.X])
+        matrix = self._build_signal_matrix(rng, size, true_label)
+        expected_label: Optional[PatternLabel] = true_label
+        raw_expected = "+" if true_label == PatternLabel.CROSS else "x"
 
-        if anomaly == AnomalyType.COL_MISMATCH:
-            # 특정 행의 열 개수 축소 (Ragged 행렬)
-            target_row = rng.randrange(size)
-            matrix[target_row] = matrix[target_row][:-1]
-            return Pattern(
-                name=case_name,
-                size=size,
-                input_matrix=matrix,
-                expected=label,
-                raw_expected=label.value,
-            )
+        if anomaly_type == "size_mismatch_row":
+            matrix = matrix[:-1]
+        elif anomaly_type == "size_mismatch_col":
+            matrix[-1] = matrix[-1][:-1]
+        elif anomaly_type == "invalid_label":
+            expected_label = None
+            raw_expected = rng.choice(["XX", "PLUS", "", "UNKNOWN"])
+        elif anomaly_type == "out_of_range_value":
+            r, c = rng.randrange(size), rng.randrange(size)
+            matrix[r][c] = rng.choice([-0.5, 1.5, 99.9])
+        elif anomaly_type == "non_finite_value":
+            r, c = rng.randrange(size), rng.randrange(size)
+            matrix[r][c] = rng.choice([float("nan"), float("inf"), float("-inf")])
+        elif anomaly_type == "label_mismatch":
+            # 실제 행렬(true_label)과 정반대되는 라벨을 expected와 raw_expected 둘 다 설정
+            if true_label == PatternLabel.CROSS:
+                expected_label = PatternLabel.X
+                raw_expected = "x"
+            else:
+                expected_label = PatternLabel.CROSS
+                raw_expected = "+"
+        elif anomaly_type == "tie_score":
+            # 모든 셀을 동일 값으로 채워 Cross/X 필터 점수가 같아지도록 동점(UNDECIDED) 유도
+            uniform_val = round(rng.uniform(0.3, 0.7), 4)
+            matrix = [[uniform_val for _ in range(size)] for _ in range(size)]
 
-        if anomaly == AnomalyType.SIZE_MISMATCH:
-            # 선언된 size(N)와 다른 크기((N+2)×(N+2)) 행렬 주입
-            wrong_matrix = self._build_signal_matrix(rng, size + 2, label)
-            return Pattern(
-                name=case_name,
-                size=size,
-                input_matrix=wrong_matrix,
-                expected=label,
-                raw_expected=label.value,
-            )
-
-        if anomaly == AnomalyType.INVALID_VALUE:
-            # 임의 위치에 범위 이탈(-9999.0, 9999.0) 또는 NaN/inf 주입
-            r = rng.randrange(size)
-            c = rng.randrange(size)
-            matrix[r][c] = rng.choice([float("nan"), float("inf"), -9999.0, 9999.0])
-            return Pattern(
-                name=case_name,
-                size=size,
-                input_matrix=matrix,
-                expected=label,
-                raw_expected=label.value,
-            )
-
-        # AnomalyType.INVALID_LABEL: 오타 라벨 주입
-        bad_label = rng.choice(self.INVALID_LABELS)
         return Pattern(
             name=case_name,
             size=size,
             input_matrix=matrix,
-            expected=None,
-            raw_expected=bad_label,
+            expected=expected_label,
+            raw_expected=raw_expected,
         )
 
     def _build_signal_matrix(

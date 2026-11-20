@@ -17,7 +17,7 @@ class CaseResult:
     size: Optional[int] = None
     mac_result: Optional[MacResult] = None
     predicted_label: Optional[str] = None
-    expected_label: Optional[PatternLabel] = None
+    expected_label: Optional[str] = None
     fail_reason: Optional[str] = None
 
     @classmethod
