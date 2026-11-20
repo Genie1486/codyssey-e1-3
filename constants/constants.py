@@ -6,8 +6,15 @@ REPEAT_COUNT: int = 10  # 성능 측정 반복 횟수
 DEFAULT_USER_SIZE: int = 3  # 모드 1 기본 행렬 크기
 DEFAULT_DATA_PATH: str = "data.json"  # 모드 2 기본 데이터 파일 경로
 
+# 입력 허용 범위 및 패턴 생성기 설정 상수
 MIN_CELL_VALUE: float = 0.0
 MAX_CELL_VALUE: float = 1.0
+PATTERN_SEED: int = 42  # 패턴 생성 재현성 고정 시드
+NORMAL_PATTERN_RATIO: float = 0.8  # 정상 패턴 비율 (80%)
+NOISE_MAX_VALUE: float = 0.2  # 정상 패턴 배경 노이즈 최댓값
+SIGNAL_MIN_VALUE: float = 0.8  # 정상 패턴 신호 최솟값
+PASSED_CASES_PATH: str = "passed_cases.json"  # 성공 케이스 저장 경로
+FAILED_CASES_PATH: str = "failed_cases.json"  # 실패 케이스 저장 경로
 
 
 class Mode(Enum):
@@ -15,6 +22,8 @@ class Mode(Enum):
 
     USER_INPUT = (1, "사용자 입력 (3x3)")
     JSON_ANALYSIS = (2, "data.json 분석")
+    PATTERN_GENERATION = (3, "패턴 생성 및 검증")
+    EXIT = (4, "종료")
 
 
 class MatrixType(Enum):
@@ -82,3 +91,7 @@ class SectionHeader(Enum):
     JSON_PATTERN_ANALYSIS = "# [2] 패턴 분석 (라벨 정규화 적용)"
     JSON_PERFORMANCE_ANALYSIS = f"# [3] 성능 분석 (평균/{REPEAT_COUNT}회)"
     JSON_RESULT_SUMMARY = "# [4] 결과 요약"
+
+    # 모드 3 헤더
+    GEN_PATTERN_CONFIG = "# [1] 패턴 생성 설정 및 실행"
+    GEN_FILE_EXPORT = "# [5] 검증 결과 파일 저장"
