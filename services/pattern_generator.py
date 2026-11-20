@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, List, Optional
 
 from constants.constants import (
+    LABEL_ALIAS_MAP,
     MAX_CELL_VALUE,
     NOISE_MAX_VALUE,
     NORMAL_PATTERN_RATIO,
@@ -101,8 +102,8 @@ class PatternGenerator:
         elif anomaly_type == "size_mismatch_col":
             matrix[-1] = matrix[-1][:-1]
         elif anomaly_type == "invalid_label":
-            expected_label = None
             raw_expected = rng.choice(["XX", "PLUS", "", "UNKNOWN"])
+            expected_label = LABEL_ALIAS_MAP.get(raw_expected.strip().lower())
         elif anomaly_type == "out_of_range_value":
             r, c = rng.randrange(size), rng.randrange(size)
             matrix[r][c] = rng.choice([-0.5, 1.5, 99.9])
