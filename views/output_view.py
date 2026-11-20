@@ -18,8 +18,8 @@ from models.summary_result import SummaryResult
 class OutputView:
     """콘솔 화면 출력을 담당하는 뷰 클래스"""
 
-    DIVIDER: str = "#" + "-" * 40
-    SUB_DIVIDER: str = "-" * 41
+    DIVIDER: str = "#" + "-" * 59
+    SUB_DIVIDER: str = "-" * 60
     TITLE_SIMULATOR: str = "=== Mini NPU Simulator ==="
     HEADER_MODE_SELECT: str = "[모드 선택]"
 
@@ -29,6 +29,9 @@ class OutputView:
     MSG_SCORE_A: str = "A 점수: {score}"
     MSG_SCORE_B: str = "B 점수: {score}"
     MSG_AVG_TIME: str = "연산 시간(평균/{repeat}회): {time:.3f} ms"
+    MSG_OPT_AVG_TIME: str = (
+        "연산 시간 최적화 로직 적용(평균/{repeat}회): {opt_time:.3f} ms"
+    )
     MSG_JUDGE_RESULT: str = "판정: {result}"
 
     # 모드 2 메시지 포맷
@@ -36,8 +39,12 @@ class OutputView:
     MSG_CASE_HEADER: str = "- -- {case_name} ---"
     MSG_PATTERN_SCORE: str = "{label} 점수: {score}"
     MSG_CASE_RESULT: str = "판정: {predicted} | expected: {expected} | {status}{reason}"
-    MSG_PERF_HEADER: str = f"{'크기':<8}{'평균 시간(ms)':>11}{'연산 횟수':>8}"
-    MSG_PERF_ROW: str = "{size:<10}{avg_time:>15.3f}{op_count:>12}"
+    MSG_PERF_HEADER: str = (
+        f"{'크기':<6}{'기존 2D(ms)':>11}{'최적화 1D(ms)':>13}{'개선율(%)':>10}{'연산 횟수':>9}"
+    )
+    MSG_PERF_ROW: str = (
+        "{size:<8}{avg_time:>14.3f}{opt_time:>16.3f}{rate:>12.1f}%{op_count:>12}"
+    )
     MSG_SUMMARY_TOTAL: str = "총 테스트: {count}개"
     MSG_SUMMARY_PASS: str = "통과: {count}개"
     MSG_SUMMARY_FAIL: str = "실패: {count}개"
@@ -100,6 +107,13 @@ class OutputView:
             print(
                 self.MSG_AVG_TIME.format(repeat=REPEAT_COUNT, time=result.avg_time_ms)
             )
+
+            if result.opt_avg_time_ms is not None:
+                print(
+                    self.MSG_OPT_AVG_TIME.format(
+                        repeat=REPEAT_COUNT, opt_time=result.opt_avg_time_ms
+                    )
+                )
 
         if result.judge_result is not None:
             print(self.MSG_JUDGE_RESULT.format(result=result.judge_result.value))
@@ -188,6 +202,8 @@ class OutputView:
                 self.MSG_PERF_ROW.format(
                     size=size_str,
                     avg_time=perf_result.avg_time_ms,
+                    opt_time=perf_result.opt_avg_time_ms,
+                    rate=perf_result.improvement_rate,
                     op_count=perf_result.operation_count,
                 )
             )

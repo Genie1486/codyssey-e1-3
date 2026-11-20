@@ -208,8 +208,9 @@ class AnalysisService:
     def measure_performance(
         self, case_results: List[CaseResult]
     ) -> List[PerformanceResult]:
-        """분석 완료된 케이스 결과들을 크기별로 집계하여 평균 연산 시간을 계산한다."""
-        time_sums: Dict[int, float] = {}
+        """분석 완료된 케이스 결과들을 크기별로 집계하여 2D/1D 평균 연산 시간을 계산한다."""
+        time_sums_2d: Dict[int, float] = {}
+        time_sums_1d: Dict[int, float] = {}
         counts: Dict[int, int] = {}
 
         for case_result in case_results:
@@ -217,24 +218,28 @@ class AnalysisService:
                 case_result.size is None
                 or case_result.mac_result is None
                 or case_result.mac_result.avg_time_ms is None
+                or case_result.mac_result.opt_avg_time_ms is None
             ):
                 continue
 
             size = case_result.size
-            time_sums[size] = (
-                time_sums.get(size, 0.0) + case_result.mac_result.avg_time_ms
+            time_sums_2d[size] = (
+                time_sums_2d.get(size, 0.0) + case_result.mac_result.avg_time_ms
+            )
+            time_sums_1d[size] = (
+                time_sums_1d.get(size, 0.0) + case_result.mac_result.opt_avg_time_ms
             )
             counts[size] = counts.get(size, 0) + 1
 
-        results = [
+        return [
             PerformanceResult(
                 size=size,
-                avg_time_ms=time_sums[size] / counts[size],
+                avg_time_ms=time_sums_2d[size] / counts[size],
+                opt_avg_time_ms=time_sums_1d[size] / counts[size],
                 operation_count=size**2,
             )
-            for size in sorted(time_sums.keys())
+            for size in sorted(time_sums_2d.keys())
         ]
-        return results
 
     def summarize_result(self, case_results: List[CaseResult]) -> SummaryResult:
         """개별 분석 결과 리스트를 집계하여 전체 요약 정보를 생성한다."""
